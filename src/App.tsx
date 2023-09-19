@@ -1,3 +1,6 @@
+import RL from "./morphine/rl";
+import RS from "./morphine/rs";
+
 function App() {
   return (
     <div className="App" role="main">
@@ -14,6 +17,8 @@ function App() {
         >
           Read the docs →
         </a>
+        <RS></RS>
+        <RL></RL>
       </article>
     </div>
   );

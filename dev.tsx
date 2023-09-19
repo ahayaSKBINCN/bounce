@@ -1,15 +1,29 @@
 import * as path from "path";
-import { statSync } from "fs";
-import type { ServeOptions } from "bun";
+import { statSync, watch } from "fs";
+import type { ServeOptions, ServerWebSocket } from "bun";
+import { HotModuleReload } from "./plugins/hot-module-reload";
+
+type GlobalThis = typeof globalThis & {
+  socket: ServerWebSocket
+}
 
 const PROJECT_ROOT = import.meta.dir;
 const PUBLIC_DIR = path.resolve(PROJECT_ROOT, "public");
-const BUILD_DIR = path.resolve(PROJECT_ROOT, "build");
+const BUILD_DIR = path.resolve(PROJECT_ROOT, "outlet");
 
-await Bun.build({
+const postMessage = (type: string, dataset: any) => {
+  const _self: GlobalThis = global as any;
+  if (_self.socket)
+  return _self.socket.send(JSON.stringify({ type, dataset }))
+} 
+
+const buildConfig: ParamOf<typeof Bun.build> = {
   entrypoints: ["./src/index.tsx"],
-  outdir: "./build",
-});
+  outdir: "./outlet",
+  splitting: true
+};
+
+await Bun.build(buildConfig);
 
 function serveFromDir(config: {
   directory: string;
@@ -25,22 +39,29 @@ function serveFromDir(config: {
       if (stat && stat.isFile()) {
         return new Response(Bun.file(pathWithSuffix));
       }
-    } catch (err) {}
+    } catch (err) {
+    }
   }
 
   return null;
 }
 
 const server = Bun.serve({
-  fetch(request) {
+  fetch(request, server) {
+  
     let reqPath = new URL(request.url).pathname;
-    console.log(request.method, reqPath);
+    // fetch path is socket
+    if (reqPath.startsWith('/ws'))
+      if(server.upgrade(request)){ 
+        return
+      }
+    
     if (reqPath === "/") reqPath = "/index.html";
 
     // check public
     const publicResponse = serveFromDir({
       directory: PUBLIC_DIR,
-      path: reqPath,
+      path: reqPath
     });
     if (publicResponse) return publicResponse;
 
@@ -49,9 +70,34 @@ const server = Bun.serve({
     if (buildResponse) return buildResponse;
 
     return new Response("File not found", {
-      status: 404,
+      status: 404
     });
   },
+  websocket: {
+    message(ws, message) {
+      console.log(message)
+    },
+    open(ws){
+      (globalThis as any).socket = ws
+      console.log("open")
+    },
+    close(){
+      (globalThis as any).socket = null
+      console.log("close")
+    },
+    drain(ws) {
+      console.log("drain")
+    },
+  }
 });
+
+/** watch dir */
+watch("./src", { encoding: "buffer", recursive: true }, async (event, filename) => {
+  console.log(event, filename?.toString());
+  Bun.build(buildConfig).then(() => {
+    postMessage(event, filename)
+  });
+});
+
 
 console.log(`Listening on http://localhost:${server.port}`);
