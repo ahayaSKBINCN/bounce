@@ -1,7 +1,6 @@
 import * as path from "path";
 import { statSync, watch } from "fs";
 import type { ServeOptions, ServerWebSocket } from "bun";
-import { HotModuleReload } from "./plugins/hot-module-reload";
 
 type GlobalThis = typeof globalThis & {
   socket: ServerWebSocket
@@ -18,9 +17,10 @@ const postMessage = (type: string, dataset: any) => {
 } 
 
 const buildConfig: ParamOf<typeof Bun.build> = {
-  entrypoints: ["./src/index.tsx"],
+  entrypoints: ["./src/index.ts"],
   outdir: "./outlet",
-  splitting: true
+  splitting: true,
+  sourcemap: 'inline'
 };
 
 await Bun.build(buildConfig);

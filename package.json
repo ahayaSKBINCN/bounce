@@ -22,7 +22,7 @@
     "typescript": "latest"
   },
   "scripts": {
-    "dev": "bun --watch run dev.tsx"
+    "dev": "bun --watch run dev.ts"
   },
   "module": "index.ts",
   "type": "module"

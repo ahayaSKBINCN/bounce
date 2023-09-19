@@ -1,7 +1,6 @@
-import RL from "./morphine/rl";
-import RS from "./morphine/rs";
 
 function App() {
+
   return (
     <div className="App" role="main">
       <article className="App-article">
@@ -17,8 +16,6 @@ function App() {
         >
           Read the docs →
         </a>
-        <RS></RS>
-        <RL></RL>
       </article>
     </div>
   );
