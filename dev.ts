@@ -1,7 +1,13 @@
 import * as path from "path";
-import { statSync, watch } from "fs";
+import { WatchEventType, statSync, watch } from "fs";
 import type { ServeOptions, ServerWebSocket } from "bun";
+import chalk from "chalk"
+import { DevServer } from "./servers/dev-server";
 
+
+/**
+ * 
+ */
 type GlobalThis = typeof globalThis & {
   socket: ServerWebSocket
 }
@@ -10,21 +16,82 @@ const PROJECT_ROOT = import.meta.dir;
 const PUBLIC_DIR = path.resolve(PROJECT_ROOT, "public");
 const BUILD_DIR = path.resolve(PROJECT_ROOT, "outlet");
 
-const postMessage = (type: string, dataset: any) => {
-  const _self: GlobalThis = global as any;
-  if (_self.socket)
-  return _self.socket.send(JSON.stringify({ type, dataset }))
-} 
+const pool: [WatchEventType, any][] = [];
+const timeout = 1000
+let timer: number | undefined = undefined
 
+/**
+ * @param type 
+ * @param payload 
+ */
+const pushWatchResult = (type: WatchEventType, payload?: string) => {
+  pool.push([type, payload])
+  if (timer) clearTimeout(timer)
+  timer = setTimeout(postMessage, timeout)
+}
+
+/**
+ * ServerWebSocket post message
+ * @param type 
+ * @param payload 
+ */
+const postMessage = () => {
+  const msg = []
+  while (pool.length) {
+    const item = pool.pop()!
+    switch (item[0]) {
+      case 'change':
+      case "rename":
+        msg.push(item[1])
+      case "error":
+      case "close":
+        break
+    }
+  }
+  if(msg.length) {
+    const schema = new URLSearchParams()
+    msg.forEach((payload, key) => {
+      schema.append(`payload[${key}]`, payload)
+    })
+
+    tryToPostMessage('change', schema.toString())
+  }
+}
+
+/**
+ * ServerWebSocket try post message
+ * @param {"change"} type 
+ * @param {string} payload 
+ * @param {Partial<string>} expected 
+ * @returns 
+ */
+const tryToPostMessage = (type: WatchEventType, payload?: string, expected?: string) => {
+  const _self: GlobalThis = global as any;
+  try {
+    if (!_self.socket) return
+    return _self.socket.send(JSON.stringify({ type, payload }))
+  } catch (e) {
+    return
+  }
+}
+
+/**
+ * 
+ */
 const buildConfig: ParamOf<typeof Bun.build> = {
   entrypoints: ["./src/index.ts"],
   outdir: "./outlet",
   splitting: true,
-  sourcemap: 'inline'
+  sourcemap: 'inline',
+
 };
 
 await Bun.build(buildConfig);
 
+/**
+ * @param config 
+ * @returns 
+ */
 function serveFromDir(config: {
   directory: string;
   path: string;
@@ -46,16 +113,19 @@ function serveFromDir(config: {
   return null;
 }
 
+/**
+ * 
+ */
 const server = Bun.serve({
   fetch(request, server) {
-  
+
     let reqPath = new URL(request.url).pathname;
     // fetch path is socket
     if (reqPath.startsWith('/ws'))
-      if(server.upgrade(request)){ 
+      if (server.upgrade(request)) {
         return
       }
-    
+
     if (reqPath === "/") reqPath = "/index.html";
 
     // check public
@@ -77,11 +147,12 @@ const server = Bun.serve({
     message(ws, message) {
       console.log(message)
     },
-    open(ws){
-      (globalThis as any).socket = ws
+    open(ws) {
+      // (globalThis as any).socket = ws
+      (globalThis as any).socket = new DevServer(ws)
       console.log("open")
     },
-    close(){
+    close() {
       (globalThis as any).socket = null
       console.log("close")
     },
@@ -91,13 +162,19 @@ const server = Bun.serve({
   }
 });
 
-/** watch dir */
+/** 
+ * watch.dir(src) changes, then emit(postMessage)
+ *  */
 watch("./src", { encoding: "buffer", recursive: true }, async (event, filename) => {
   console.log(event, filename?.toString());
-  Bun.build(buildConfig).then(() => {
-    postMessage(event, filename)
+  Bun.build(buildConfig).then(({outputs}) => {
+    console.log(outputs)
+    pushWatchResult(event, filename?.toString())
   });
 });
 
+console.log("import.meta.dir",import.meta.dir)
 
-console.log(`Listening on http://localhost:${server.port}`);
+console.log(`Listening on http://localhost:${server.port}`)
+
+

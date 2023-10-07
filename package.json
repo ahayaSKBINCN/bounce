@@ -18,11 +18,12 @@
     "@types/react-refresh": "^0.14.0",
     "@types/web": "^0.0.99",
     "bun-types": "canary",
+    "chalk": "^5.3.0",
     "react-refresh": "0.10.0",
     "typescript": "latest"
   },
   "scripts": {
-    "dev": "bun --watch run dev.ts"
+    "dev": "BUN_FORCE_HMR=1 bun-debug --watch run dev.ts"
   },
   "module": "index.ts",
   "type": "module"
