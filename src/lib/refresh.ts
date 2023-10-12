@@ -10,5 +10,5 @@ const devClient = new WebSocketClient({
     pathname: `ws`,
     host:"localhost:3000"
 })
-devClient.start()
 
+devClient.start()
