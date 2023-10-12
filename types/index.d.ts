@@ -6,4 +6,6 @@ declare interface Window {
     devClient: DevClient
 }
 
+declare module "*.module.css"
+
 declare const debug: TypedDebug;

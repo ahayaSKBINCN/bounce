@@ -1,13 +1,7 @@
 import * as path from "path";
 import { WatchEventType, statSync, watch } from "fs";
 import type { ServeOptions, ServerWebSocket } from "bun";
-import chalk from "chalk"
-import { DevServer } from "./servers/dev-server";
 
-
-/**
- * 
- */
 type GlobalThis = typeof globalThis & {
   socket: ServerWebSocket
 }
@@ -43,6 +37,7 @@ const postMessage = () => {
       case 'change':
       case "rename":
         msg.push(item[1])
+        break;
       case "error":
       case "close":
         break
@@ -71,6 +66,7 @@ const tryToPostMessage = (type: WatchEventType, payload?: string, expected?: str
     if (!_self.socket) return
     return _self.socket.send(JSON.stringify({ type, payload }))
   } catch (e) {
+    console.log(e)
     return
   }
 }
@@ -82,7 +78,7 @@ const buildConfig: ParamOf<typeof Bun.build> = {
   entrypoints: ["./src/index.ts"],
   outdir: "./outlet",
   splitting: true,
-  sourcemap: 'inline',
+  sourcemap: 'external',
 
 };
 
@@ -148,8 +144,7 @@ const server = Bun.serve({
       console.log(message)
     },
     open(ws) {
-      // (globalThis as any).socket = ws
-      (globalThis as any).socket = new DevServer(ws)
+      (globalThis as any).socket = ws
       console.log("open")
     },
     close() {

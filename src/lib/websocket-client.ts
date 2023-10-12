@@ -66,7 +66,7 @@ export class WebSocketClient implements ClientBase {
 
     static #validateHost = (host: string) => {
         if (!/\d{1,3}\.\d{1,3}\.\d{1,3}/.exec(host) || host !== "localhost") {
-            throw new Error(" Expected value of property `host` must be valid ip address, such as `0.0.0` or special domain `localhost`, but got" + host)
+            throw new Error(" Expected value of property `host` must be valid ip address, such as `0.0.0` or special domain `localhost`, but got " + host)
         }
     }
 
@@ -76,12 +76,13 @@ export class WebSocketClient implements ClientBase {
         host,
     }:WSClientProps) {
         WebSocketClient.#validateProtocol(protocol)
-        WebSocketClient.#validateHost(host)
+        // WebSocketClient.#validateHost(host)
         
         const path = `${protocol}${host}/${pathname}`
         
         this.#ws_path = path;
         this.#status = DevClientStatus.dashed;
+        this.#client = new WebSocket(path)
     }
     #connect() {
         this.#client = new WebSocket(this.#ws_path);
@@ -113,6 +114,7 @@ export class WebSocketClient implements ClientBase {
     }
 
     onopen = () => {
+        console.log(1231)
         debug.websocket("[OPEN] RefreshServer Listened on: " + this.#ws_path);
         this.#status = DevClientStatus.growing
     }
@@ -129,10 +131,11 @@ export class WebSocketClient implements ClientBase {
     }
 
     onmessage = (event: MessageEvent) => {
-        debug.websocket("[MESSAGE] ", event.data);
+        console.log(event, event.data, isBrowser, typeof  globalThis.location.reload)
+        debug.websocket("[MESSAGE] ", event.data, isBrowser, typeof  globalThis.location.reload);
         // TODO next step use `hot-reload` api instead of `globalThis.location.reload`
         if (isBrowser && typeof globalThis.location?.reload === "function") {
-            globalThis.location.reload()
+            window.location.reload()
         }
     }
 
@@ -156,3 +159,5 @@ export class WebSocketClient implements ClientBase {
         return this.on(eventName, callback, true)
     }
 }
+
+window.debug = WebSocketClient.debug;
