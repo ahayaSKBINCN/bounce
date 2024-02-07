@@ -1,92 +1,39 @@
 import * as path from "path";
-import { WatchEventType, statSync, watch } from "fs";
-import type { ServeOptions, ServerWebSocket } from "bun";
+import { statSync, watch } from "fs";
+import { default as CSSPlugin } from "./servers/plugins/css-module"
 
-type GlobalThis = typeof globalThis & {
-  socket: ServerWebSocket
-}
+
+import { DevWebSocket } from "./servers/dev-web-socket";
+
 
 const PROJECT_ROOT = import.meta.dir;
 const PUBLIC_DIR = path.resolve(PROJECT_ROOT, "public");
 const BUILD_DIR = path.resolve(PROJECT_ROOT, "outlet");
 
-const pool: [WatchEventType, any][] = [];
-const timeout = 1000
-let timer: number | undefined = undefined
+const ignore = ["sourcemap"];
 
-/**
- * @param type 
- * @param payload 
- */
-const pushWatchResult = (type: WatchEventType, payload?: string) => {
-  pool.push([type, payload])
-  if (timer) clearTimeout(timer)
-  timer = setTimeout(postMessage, timeout)
-}
-
-/**
- * ServerWebSocket post message
- * @param type 
- * @param payload 
- */
-const postMessage = () => {
-  const msg = []
-  while (pool.length) {
-    const item = pool.pop()!
-    switch (item[0]) {
-      case 'change':
-      case "rename":
-        msg.push(item[1])
-        break;
-      case "error":
-      case "close":
-        break
-    }
-  }
-  if(msg.length) {
-    const schema = new URLSearchParams()
-    msg.forEach((payload, key) => {
-      schema.append(`payload[${key}]`, payload)
-    })
-
-    tryToPostMessage('change', schema.toString())
-  }
-}
-
-/**
- * ServerWebSocket try post message
- * @param {"change"} type 
- * @param {string} payload 
- * @param {Partial<string>} expected 
- * @returns 
- */
-const tryToPostMessage = (type: WatchEventType, payload?: string, expected?: string) => {
-  const _self: GlobalThis = global as any;
-  try {
-    if (!_self.socket) return
-    return _self.socket.send(JSON.stringify({ type, payload }))
-  } catch (e) {
-    console.log(e)
-    return
-  }
-}
-
-/**
- * 
- */
+/** 资源缓存列表 */
+const hashmap = new Map<string, string>();
 const buildConfig: ParamOf<typeof Bun.build> = {
   entrypoints: ["./src/index.ts"],
   outdir: "./outlet",
   splitting: true,
-  sourcemap: 'external',
-
+  sourcemap: "external",
+  plugins: [CSSPlugin]
 };
 
-await Bun.build(buildConfig);
+await Bun.build(buildConfig).then((outlet) => {
+  outlet.outputs
+    .filter((once) => !ignore.includes(once.kind))
+    .forEach((once) => {
+      hashmap.set(once.path.replace(BUILD_DIR, ""), once.hash!);
+    });
+  return outlet;
+});
 
 /**
- * @param config 
- * @returns 
+ * @param config
+ * @returns
  */
 function serveFromDir(config: {
   directory: string;
@@ -102,74 +49,74 @@ function serveFromDir(config: {
       if (stat && stat.isFile()) {
         return new Response(Bun.file(pathWithSuffix));
       }
-    } catch (err) {
-    }
+    } catch (err) {}
   }
 
   return null;
 }
 
-/**
- * 
- */
+function handleFetch(request: Request, server: ReturnType<typeof Bun.serve>) {
+  let path = new URL(request.url).pathname;
+  if (path.startsWith("/ws")) if (server.upgrade(request)) return;
+  if (path === "/") path = "/index.html";
+  const publicResponse = serveFromDir({
+    directory: PUBLIC_DIR,
+    path,
+  });
+  if (publicResponse) return publicResponse;
+  // check /.build
+  const buildResponse = serveFromDir({
+    directory: BUILD_DIR,
+    path,
+  });
+  if (buildResponse) return buildResponse;
+
+  return new Response("File not found", {
+    status: 404,
+  });
+}
+
+
+
+const getServer = () => {
+  return new Promise((resolve, reject) => {
+    resolve(
+      Bun.serve({
+        fetch: handleFetch,
+        websocket: DevWebSocket.getInstance(),
+      })
+    );
+  });
+};
+
 const server = Bun.serve({
-  fetch(request, server) {
-
-    let reqPath = new URL(request.url).pathname;
-    // fetch path is socket
-    if (reqPath.startsWith('/ws'))
-      if (server.upgrade(request)) {
-        return
-      }
-
-    if (reqPath === "/") reqPath = "/index.html";
-
-    // check public
-    const publicResponse = serveFromDir({
-      directory: PUBLIC_DIR,
-      path: reqPath
-    });
-    if (publicResponse) return publicResponse;
-
-    // check /.build
-    const buildResponse = serveFromDir({ directory: BUILD_DIR, path: reqPath });
-    if (buildResponse) return buildResponse;
-
-    return new Response("File not found", {
-      status: 404
-    });
-  },
-  websocket: {
-    message(ws, message) {
-      console.log(message)
-    },
-    open(ws) {
-      (globalThis as any).socket = ws
-      console.log("open")
-    },
-    close() {
-      (globalThis as any).socket = null
-      console.log("close")
-    },
-    drain(ws) {
-      console.log("drain")
-    },
-  }
+  fetch: handleFetch,
+  websocket: DevWebSocket.getInstance(),
 });
 
-/** 
+/**
  * watch.dir(src) changes, then emit(postMessage)
  *  */
-watch("./src", { encoding: "buffer", recursive: true }, async (event, filename) => {
-  console.log(event, filename?.toString());
-  Bun.build(buildConfig).then(({outputs}) => {
-    console.log(outputs)
-    pushWatchResult(event, filename?.toString())
-  });
-});
+watch(
+  "./src",
+  { encoding: "buffer", recursive: true },
+  async (event, filename) => {
+    Bun.build(buildConfig).then((outlet) => {
+      const { outputs } = outlet;
+      const diff = outputs.filter((once) => {
+        if (!ignore.includes(once.kind)) {
+          const path = once.path.replace(BUILD_DIR, "");
+          if (!hashmap.has(path) || hashmap.get(path) !== once.hash) {
+            hashmap.set(path, once.hash!);
+            return true;
+          }
+        }
+        return false;
+      });
+      DevWebSocket.getInstance().put({ key: event, value: filename?.toString() || '' })
+      return outlet;
+    });
+  }
+);
 
-console.log("import.meta.dir",import.meta.dir)
-
-console.log(`Listening on http://localhost:${server.port}`)
-
-
+console.log(`Listening on http://localhost:${server.port}`);
