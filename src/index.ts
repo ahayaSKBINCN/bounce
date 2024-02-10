@@ -1,11 +1,12 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom/client";
-import App from "./app";
+import { router } from "./lib/router";
 import "./lib/dev/refresh"
+import { RouterProvider } from "react-router";
 // import reportWebVitals from "./lib/reportWebVitals";
 
 const root = ReactDOM.createRoot(document.getElementById("root")!);
-root.render(React.createElement(React.StrictMode, null, React.createElement(App)))
+root.render(React.createElement(React.StrictMode, null, React.createElement(RouterProvider, { router })))
 
 
 // before all create a websocket to listen server-side change

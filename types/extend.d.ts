@@ -27,3 +27,6 @@ interface ClientBase {
     destroy: () => void
     reconnect: () => void
   }
+
+type BuildInput = string | blob | PathLike | Symbol
+type BuildOutput = string | Object

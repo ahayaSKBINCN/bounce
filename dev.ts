@@ -1,10 +1,17 @@
 import * as path from "path";
-import { statSync, watch } from "fs";
+import { statSync, watch, writeFile } from "fs";
+
 import { default as CSSPlugin } from "./servers/plugins/css-module"
-
-
 import { DevWebSocket } from "./servers/dev-web-socket";
 
+
+const rewriter = new HTMLRewriter()
+
+rewriter.on("*", {
+  element(el) {
+    console.log(el)
+  }
+})
 
 const PROJECT_ROOT = import.meta.dir;
 const PUBLIC_DIR = path.resolve(PROJECT_ROOT, "public");
@@ -14,12 +21,13 @@ const ignore = ["sourcemap"];
 
 /** 资源缓存列表 */
 const hashmap = new Map<string, string>();
+
 const buildConfig: ParamOf<typeof Bun.build> = {
   entrypoints: ["./src/index.ts"],
   outdir: "./outlet",
   splitting: true,
   sourcemap: "external",
-  plugins: [CSSPlugin]
+  // plugins: [CSSPlugin]
 };
 
 await Bun.build(buildConfig).then((outlet) => {
@@ -30,6 +38,8 @@ await Bun.build(buildConfig).then((outlet) => {
     });
   return outlet;
 });
+
+console.log(hashmap)
 
 /**
  * @param config
@@ -59,11 +69,19 @@ function handleFetch(request: Request, server: ReturnType<typeof Bun.serve>) {
   let path = new URL(request.url).pathname;
   if (path.startsWith("/ws")) if (server.upgrade(request)) return;
   if (path === "/") path = "/index.html";
+
   const publicResponse = serveFromDir({
     directory: PUBLIC_DIR,
     path,
   });
-  if (publicResponse) return publicResponse;
+  console.log(publicResponse)
+
+
+  if (publicResponse){ 
+    // const pubR = rewriter.transform(publicResponse)
+    // return pubR;
+    return publicResponse
+  }
   // check /.build
   const buildResponse = serveFromDir({
     directory: BUILD_DIR,
@@ -75,19 +93,6 @@ function handleFetch(request: Request, server: ReturnType<typeof Bun.serve>) {
     status: 404,
   });
 }
-
-
-
-const getServer = () => {
-  return new Promise((resolve, reject) => {
-    resolve(
-      Bun.serve({
-        fetch: handleFetch,
-        websocket: DevWebSocket.getInstance(),
-      })
-    );
-  });
-};
 
 const server = Bun.serve({
   fetch: handleFetch,
