@@ -4,6 +4,14 @@ import { statSync, watch, writeFile } from "fs";
 import { default as CSSPlugin } from "./servers/plugins/css-module"
 import { DevWebSocket } from "./servers/dev-web-socket";
 
+global.dynamicImportPath = new Array<string>();
+console.log(1)
+
+global.addEventListener("message", (msg) => {
+  console.log("accept", msg)
+})
+
+const hashmap = new Map<string, string>()
 
 const rewriter = new HTMLRewriter()
 
@@ -18,9 +26,6 @@ const PUBLIC_DIR = path.resolve(PROJECT_ROOT, "public");
 const BUILD_DIR = path.resolve(PROJECT_ROOT, "outlet");
 
 const ignore = ["sourcemap"];
-
-/** 资源缓存列表 */
-const hashmap = new Map<string, string>();
 
 const buildConfig: ParamOf<typeof Bun.build> = {
   entrypoints: ["./src/index.ts"],
@@ -37,9 +42,7 @@ await Bun.build(buildConfig).then((outlet) => {
       hashmap.set(once.path.replace(BUILD_DIR, ""), once.hash!);
     });
   return outlet;
-});
-
-console.log(hashmap)
+})
 
 /**
  * @param config
@@ -74,7 +77,7 @@ function handleFetch(request: Request, server: ReturnType<typeof Bun.serve>) {
     directory: PUBLIC_DIR,
     path,
   });
-  console.log(publicResponse)
+  // console.log(publicResponse)
 
 
   if (publicResponse){ 

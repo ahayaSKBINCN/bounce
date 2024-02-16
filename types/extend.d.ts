@@ -28,5 +28,11 @@ interface ClientBase {
     reconnect: () => void
   }
 
-type BuildInput = string | blob | PathLike | Symbol
-type BuildOutput = string | Object
+  declare namespace globalThis {
+    var dynamicImportPath: string[]
+  }
+
+  declare interface ImportMeta {
+        env: Record<string, unknown>
+  }
+ 
