@@ -5,7 +5,7 @@ import { get_definitions } from "./servers/db"
 import { microBuild } from "./servers/micro-build"
 
 import { default as CSSPlugin } from "./servers/plugins/css-module"
-import { DevWebSocket } from "./servers/dev-web-socket";
+import { DevWebSocket } from "./servers/dev/web-socket";
 
 
 
