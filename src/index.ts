@@ -1,8 +1,11 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom/client";
-import { router } from "./lib/router";
-import "./lib/dev/refresh"
 import { RouterProvider } from "react-router";
+
+import { router } from "./lib/router";
+
+import "./lib/dev/refresh"
+import "./lib/dev/debugger"
 // import reportWebVitals from "./lib/reportWebVitals";
 
 const root = ReactDOM.createRoot(document.getElementById("root")!);

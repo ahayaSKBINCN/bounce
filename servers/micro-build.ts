@@ -7,8 +7,7 @@ const ROOT_DIR = resolve(import.meta.dir, "../src")
 export const microBuild = (entries: EntryPath[], configuration: Bun.BuildConfig) => {
     const tasks = [];
     for(let i = 0; i<entries.length; i++) {
-        const dirPath = entries[i].value.replace(/([^\/]+.tsx)/,'') // remove suffix
-        console.log('reg', entries[i].value)
+        const dirPath = entries[i].value.replace(/([^\/]+.ts(x)?)/,'') // remove suffix
         const outdir = join("./outlet", dirPath.replace(ROOT_DIR, ""))
         tasks.push(Bun.build({
             ...configuration,

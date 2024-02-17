@@ -147,6 +147,7 @@ export class WebSocketClient implements ClientBase {
       isBrowser,
       typeof globalThis.location.reload
     );
+    console.log("devServer:resolve", event)
     // TODO next step use `hot-reload` api instead of `globalThis.location.reload`
     const url = new URL("http://localhost:3000")
     url.pathname = "index.js"

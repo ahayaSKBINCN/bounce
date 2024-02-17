@@ -6,15 +6,7 @@ import { microBuild } from "./servers/micro-build"
 
 import { default as CSSPlugin } from "./servers/plugins/css-module"
 import { DevWebSocket } from "./servers/dev/web-socket";
-
-
-
-global.dynamicImportPath = new Array<string>();
-console.log(1)
-
-global.addEventListener("message", (msg) => {
-  console.log("accept", msg)
-})
+import type { BuildOutput } from "bun";
 
 const hashmap = new Map<string, string>()
 
@@ -44,18 +36,23 @@ const buildConfig: ParamOf<typeof Bun.build> = {
   // plugins: [CSSPlugin]
 };
 
-await Bun.build(buildConfig).then((outlet) => {
+const sliceToHashmap = (outlet: BuildOutput) => {
   outlet.outputs
     .filter((once) => !ignore.includes(once.kind))
     .forEach((once) => {
       hashmap.set(once.path.replace(BUILD_DIR, ""), once.hash!);
     });
   return outlet;
-})
+}
+
+const sliceMicroToHash = (outlet: PromiseSettledResult<BuildOutput>[] ) => {
+
+}
+await Bun.build(buildConfig).then(sliceToHashmap)
 
 const dynamicImports = <any[]>get_definitions.all();
 
-await microBuild(dynamicImports, buildConfig).then(console.log).catch(console.log)
+await microBuild(dynamicImports, buildConfig).then(sliceMicroToHash)
 
 
 /**
@@ -123,7 +120,10 @@ watch(
   "./src",
   { encoding: "buffer", recursive: true },
   async (event, filename) => {
-    Bun.build(buildConfig).then((outlet) => {
+    const filePath = filename?.toString() || ''
+    const fileDir = filePath.replace(/([^\/]+.ts(x)?)/,'')
+    const outputPath = path.join("./outlet", fileDir)
+    Bun.build({...buildConfig, entrypoints: [path.join("./src", filename?.toString() || '')], outdir: outputPath}).then((outlet) => {
       const { outputs } = outlet;
       const diff = outputs.filter((once) => {
         if (!ignore.includes(once.kind)) {
