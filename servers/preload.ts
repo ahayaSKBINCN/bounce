@@ -1,5 +1,5 @@
 
-const headers = require("./headers").default
+const headers = import.meta.require("./headers").default;
 
 (function preload () {
     return fetch("http://yapi.3pvr.com/api/group/list", {
@@ -9,10 +9,11 @@ const headers = require("./headers").default
     .then(handleResponse)
     .then(batchQuery)
     .then(batchQueryAPI)
+    .catch(console.error)
 })()
 
 function handleResponse (raw: ResponseWrapper<GroupData[]>) {
-    if (raw.errcode) return Promise.reject()
+    if (raw.errcode) return Promise.reject(raw)
     return raw.data
 }
 /**

@@ -1,8 +1,13 @@
 import * as path from "path";
-import { statSync, watch, writeFile } from "fs";
+import { statSync, watch } from "fs";
+
+import { get_definitions } from "./servers/db"
+import { microBuild } from "./servers/micro-build"
 
 import { default as CSSPlugin } from "./servers/plugins/css-module"
 import { DevWebSocket } from "./servers/dev-web-socket";
+
+
 
 global.dynamicImportPath = new Array<string>();
 console.log(1)
@@ -25,6 +30,10 @@ const PROJECT_ROOT = import.meta.dir;
 const PUBLIC_DIR = path.resolve(PROJECT_ROOT, "public");
 const BUILD_DIR = path.resolve(PROJECT_ROOT, "outlet");
 
+const CACHE_PATH = path.join(PROJECT_ROOT, "node_modules/.bin/@cache")
+
+await Bun.write(CACHE_PATH, "[]")
+
 const ignore = ["sourcemap"];
 
 const buildConfig: ParamOf<typeof Bun.build> = {
@@ -43,6 +52,11 @@ await Bun.build(buildConfig).then((outlet) => {
     });
   return outlet;
 })
+
+const dynamicImports = <any[]>get_definitions.all();
+
+await microBuild(dynamicImports, buildConfig).then(console.log).catch(console.log)
+
 
 /**
  * @param config
