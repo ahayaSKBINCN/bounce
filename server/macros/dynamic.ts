@@ -1,6 +1,9 @@
 import { default as nodePath } from "node:path"
+// import Bun from "bun"
 import fs from "node:fs"
-import { insert_definition } from "../db"
+// import {cwd} from "node:process"
+import { insert_definition } from "../dev/db"
+// import { callerTrace } from "./callerTracePath"
 
 const suffixReplace = (path: string) => {
     return path.replace(/\.ts(x)?$/, '.js')
@@ -11,23 +14,23 @@ const suffixAddon = (path: string) => {
 }
 
 export const dynamic = async function _(path: string) {
+    // console.log(path, callerTrace())
+
     try {
     const target = suffixAddon(suffixReplace(path))
 
-    const dirPath = import.meta.dir;
+    // const dirPath = import.meta.dir;
     // const ROOT_DIR = <string>import.meta.env.npm_config_local_prefix;
 
-    const filePath = nodePath.join(dirPath, "../../src", `${path}.tsx`)
-    console.log('filePath', filePath)
+    // const filePath = nodePath.join(dirPath, "../../src", `${path}.tsx`)
     // file test
-    fs.statSync(filePath)
+    // fs.statSync(filePath)
     // after validate a real file located
-    insert_definition.run(JSON.stringify([filePath]))
-
-    
+    // insert_definition.run(JSON.stringify([filePath]))
     return target
     } catch (error) {
-        console.log(error)
         return `DynamicChunkBundleException: cannot resolve file with path ${path}`
     }
 }
+
+

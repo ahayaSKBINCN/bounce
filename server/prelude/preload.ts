@@ -1,4 +1,3 @@
-
 const headers = import.meta.require("./headers").default;
 
 (function preload () {

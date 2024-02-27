@@ -1,12 +1,13 @@
 import * as path from "path";
 import { statSync, watch } from "fs";
 
-import { get_definitions } from "./servers/db"
-import { microBuild } from "./servers/micro-build"
+import { get_definitions } from "./server/dev/db"
+import { microBuild } from "./server/dev/build/micros"
 
-import { default as CSSPlugin } from "./servers/plugins/css-module"
-import { DevWebSocket } from "./servers/dev/web-socket";
-import type { BuildOutput } from "bun";
+import { default as CSSPlugin } from "./server/plugins/css-module"
+import { SwcPlugin } from "./server/plugins/swc"
+import { DevWebSocket } from "./server/dev/web-socket";
+import type { BuildOutput } from 'bun';
 
 const hashmap = new Map<string, string>()
 
@@ -22,10 +23,6 @@ const PROJECT_ROOT = import.meta.dir;
 const PUBLIC_DIR = path.resolve(PROJECT_ROOT, "public");
 const BUILD_DIR = path.resolve(PROJECT_ROOT, "outlet");
 
-const CACHE_PATH = path.join(PROJECT_ROOT, "node_modules/.bin/@cache")
-
-await Bun.write(CACHE_PATH, "[]")
-
 const ignore = ["sourcemap"];
 
 const buildConfig: ParamOf<typeof Bun.build> = {
@@ -33,7 +30,7 @@ const buildConfig: ParamOf<typeof Bun.build> = {
   outdir: "./outlet",
   splitting: true,
   sourcemap: "external",
-  // plugins: [CSSPlugin]
+  plugins: [SwcPlugin()]
 };
 
 const sliceToHashmap = (outlet: BuildOutput) => {
@@ -48,11 +45,11 @@ const sliceToHashmap = (outlet: BuildOutput) => {
 const sliceMicroToHash = (outlet: PromiseSettledResult<BuildOutput>[] ) => {
 
 }
-await Bun.build(buildConfig).then(sliceToHashmap)
+await Bun.build(buildConfig).then(sliceToHashmap).catch((err) => console.log(err))
 
-const dynamicImports = <any[]>get_definitions.all();
+// const dynamicImports = <any[]>get_definitions.all();
 
-await microBuild(dynamicImports, buildConfig).then(sliceMicroToHash)
+// await microBuild(dynamicImports, buildConfig).then(sliceMicroToHash)
 
 
 /**

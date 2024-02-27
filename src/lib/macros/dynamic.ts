@@ -1,3 +1,3 @@
-import { dynamic } from "../../../servers/macros/dynamic"
+import { dynamic } from "../../../server/macros/dynamic"
 
 export { dynamic }
