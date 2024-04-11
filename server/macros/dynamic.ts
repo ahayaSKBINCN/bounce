@@ -29,7 +29,7 @@ export const dynamic = async function _(path: string) {
     // insert_definition.run(JSON.stringify([filePath]))
     return target
     } catch (error) {
-        return `DynamicChunkBundleException: cannot resolve file with path ${path}`
+        return `DynamicBundleCheckingException: cannot resolve file with path ${path}`
     }
 }
 
