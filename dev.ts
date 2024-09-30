@@ -29,6 +29,7 @@ const buildConfig: ParamOf<typeof Bun.build> = {
   entrypoints: ["./src/index.ts"],
   outdir: "./outlet",
   splitting: true,
+  publicPath: "./",
   sourcemap: "external",
   plugins: [SwcPlugin()]
 };
